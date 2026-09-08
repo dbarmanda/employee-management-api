@@ -24,10 +24,7 @@ async function getEmployees(req, res){
         );
         res.status(200).json(result.rows);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            error: "Failed to fetch employees from db."
-        });
+        next(error);
     }
 }
 
@@ -39,12 +36,6 @@ async function createEmployeeController(req, res){
             salary
         } = req.body;
 
-        if(!name || !department || salary === undefined){
-            return res.status(400).json({
-                error: "name, department and salary are required"
-            });
-        }
-
         const employee = await createEmployee(
             name, 
             department,
@@ -54,10 +45,11 @@ async function createEmployeeController(req, res){
         res.status(200).json(employee);
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            error: "Failed to create employee"
-        });
+        // console.error(error);
+        // res.status(500).json({
+        //     error: "Failed to create employee"
+        // });
+        next(error);
     }
 }
 
