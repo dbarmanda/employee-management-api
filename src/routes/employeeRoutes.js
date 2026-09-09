@@ -7,8 +7,9 @@ const {
 } = require("../controllers/employeeController");
 
 const validateEmployee = require("../middleware/validateEmployee");
+const validateEmployeeQuery = require("../middleware/validateEmployeeQuery");
 
-router.get("/", getEmployees);
+router.get("/", validateEmployeeQuery, getEmployees);
 
 router.post("/", validateEmployee, createEmployeeController);
 
