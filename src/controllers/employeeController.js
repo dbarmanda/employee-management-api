@@ -14,7 +14,10 @@
 
 const {
     createEmployee,
-    getEmployees: getEmployeesFromService
+    getEmployees: getEmployeesFromService,
+    getEmployeeById,
+    updateEmployee,
+    deleteEmployee
 } = require("../services/employeeService");
 
 // async function getEmployees(req, res, next){
@@ -79,7 +82,106 @@ async function createEmployeeController(req, res, next){
     }
 }
 
+async function getEmployeeByIdController(req, res, next){
+    try {
+        const id = Number(req.params.id);
+
+        if(!Number.isInteger(id) || id < 1){
+            return res.status(400).json({
+                error: "Invalid employee id"
+            });
+        }
+        const employee = await getEmployeeById(id);
+
+        if(!employee){
+            return res.status(404).json({
+                error: "Employee not found"
+            });
+        }
+
+        res.status(200).json(employee);
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function updateEmployeeController(req, res, next){
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id < 1) {
+            return res.status(400).json({
+                error: "Invalid employee id"
+            });
+        }
+
+        const {
+            name,
+            department,
+            salary
+        } = req.body;
+
+        if (
+            typeof name !== "string" ||
+            name.trim() === "" ||
+            typeof department !== "string" ||
+            department.trim() === "" ||
+            typeof salary !== "number" ||
+            !Number.isFinite(salary) ||
+            salary <= 0
+        ) {
+            return res.status(400).json({
+                error: "name, department and a positive salary are required"
+            });
+        }
+
+        const employee = await updateEmployee(
+            id,
+            name,
+            department,
+            salary
+        );
+
+        if (!employee) {
+            return res.status(404).json({
+                error: "Employee not found"
+            });
+        }
+
+        res.status(200).json(employee);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function deleteEmployeeController(req, res, next) {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id < 1) {
+            return res.status(400).json({
+                error: "Invalid employee id"
+            });
+        }
+
+        const employee = await deleteEmployee(id);
+
+        if (!employee) {
+            return res.status(404).json({
+                error: "Employee not found"
+            });
+        }
+
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getEmployees,
-    createEmployeeController
+    createEmployeeController,
+    getEmployeeByIdController,
+    updateEmployeeController,
+    deleteEmployeeController
 };

@@ -100,7 +100,43 @@ async function getEmployees(options){
     };
 }
 
+async function getEmployeeById(id){
+    const result = await pool.query(
+        "SELECT * FROM employees WHERE id = $1",
+        [id]
+    );
+    return result.rows[0];
+}
+
+async function updateEmployee(id, name, department, salary) {
+    const result = await pool.query(
+        `UPDATE employees
+         SET name = $1,
+             department = $2,
+             salary = $3
+         WHERE id = $4
+         RETURNING *`,
+        [name, department, salary, id]
+    );
+
+    return result.rows[0];
+}
+
+async function deleteEmployee(id) {
+    const result = await pool.query(
+        `DELETE FROM employees
+         WHERE id = $1
+         RETURNING *`,
+        [id]
+    );
+
+    return result.rows[0];
+}
+
 module.exports = {
     createEmployee,
-    getEmployees
+    getEmployees,
+    getEmployeeById,
+    updateEmployee,
+    deleteEmployee
 };
