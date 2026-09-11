@@ -39,12 +39,6 @@ async function getEmployees(req, res, next){
 
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
- 
-        // if(page < 1 || limit < 1){
-        //     return res.status(400).json({
-        //         error: "Page and limit must be positive numbers"
-        //     });
-        // }
 
         const employees = await getEmployeesFromService({
             department, search, page, limit, sortBy, order
