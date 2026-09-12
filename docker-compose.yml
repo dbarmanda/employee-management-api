@@ -15,5 +15,21 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  api:
+    build: .
+    container_name: employee-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: employee_user
+      DB_PASSWORD: employee_password
+      DB_NAME: employee_db
+      PORT: 3000
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
