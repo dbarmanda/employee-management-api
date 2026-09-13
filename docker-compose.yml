@@ -5,9 +5,9 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_USER: employee_user
-      POSTGRES_PASSWORD: employee_password
-      POSTGRES_DB: employee_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
 
     ports:
       - "5432:5432"
@@ -30,12 +30,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: employee_user
-      DB_PASSWORD: employee_password
-      DB_NAME: employee_db
-      PORT: 3000
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      PORT: ${PORT}
     depends_on:
       postgres:
         condition: service_healthy
