@@ -14,6 +14,14 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U employee_user -d employee_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
   api:
     build: .
@@ -29,7 +37,9 @@ services:
       DB_NAME: employee_db
       PORT: 3000
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
 
 volumes:
   postgres_data:
