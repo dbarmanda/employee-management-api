@@ -1,4 +1,11 @@
 const pool = require("../db/db");
+const {
+    getCacheVersion,
+    invalidateEmployeeCache,
+    getCachedEmployee,
+    cacheEmployees
+} = require("../cache/emloyeeCache");
+
 
 async function createEmployee(name, department, salary){
     const result = await pool.query(
@@ -7,6 +14,8 @@ async function createEmployee(name, department, salary){
         RETURNING *`,
         [name, department, salary]
     );
+
+    await invalidateEmployeeCache();
 
     return result.rows[0];
 }
@@ -20,6 +29,26 @@ async function getEmployees(options){
         sortBy,
         order
     } = options;
+
+    //cache key
+    const version = await getCacheVersion();
+    const cacheKey = [
+        "employees",
+        `v${version}`,
+        department || "",
+        search || "",
+        page,
+        limit,
+        sortBy || "id",
+        order || "asc"
+    ].join(":");
+
+    const cachedEmployees = await getCachedEmployee(cacheKey);
+    if(cachedEmployees){
+        console.log("Employees cache HIT:", cacheKey);
+        return cachedEmployees;
+    }
+    console.log("Employees cache MISS:", cacheKey);
 
     const values = [];
     const conditions = [];
@@ -88,8 +117,8 @@ async function getEmployees(options){
     const total = Number(countResult.rows[0].total);
     const totalPages = Math.ceil(total/limit);
 
-    // return result.rows;
-    return {
+
+    const response = {
         data: dataResult.rows,
         pagination: {
             page,
@@ -98,6 +127,20 @@ async function getEmployees(options){
             totalPages
         }
     };
+
+    await cacheEmployees(cacheKey, response);
+
+    // return result.rows;
+    // return {
+    //     data: dataResult.rows,
+    //     pagination: {
+    //         page,
+    //         limit,
+    //         total,
+    //         totalPages
+    //     }
+    // };
+    return response;
 }
 
 async function getEmployeeById(id){
@@ -119,6 +162,8 @@ async function updateEmployee(id, name, department, salary) {
         [name, department, salary, id]
     );
 
+    if(result.rows[0]){ await invalidateEmployeeCache(); }
+
     return result.rows[0];
 }
 
@@ -129,6 +174,8 @@ async function deleteEmployee(id) {
          RETURNING *`,
         [id]
     );
+
+    if(result.rows[0]){ await invalidateEmployeeCache(); }
 
     return result.rows[0];
 }
