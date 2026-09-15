@@ -65,7 +65,7 @@ async function createEmployeeController(req, res, next){
             salary
         );
 
-        res.status(200).json(employee);
+        res.status(201).json(employee);
 
     } catch (error) {
         // console.error(error);

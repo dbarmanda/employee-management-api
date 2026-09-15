@@ -1,3 +1,6 @@
+// require("dotenv").config({
+//     path: ".env.test"
+// });
 const { createClient } = require("redis");
 
 const redisClient = createClient({
