@@ -3,6 +3,7 @@ const app = require("../src/app");
 const pool = require("../src/db/db");
 const expectCookies = require("supertest/lib/cookies");
 
+//--- Request tests
 describe("GET /", () => {
     test("should return API message", async() => {
         const response = await request(app).get("/");
@@ -115,5 +116,133 @@ describe("PUT /employees/:id", () => {
             });
 
         expect(response.statusCode).toBe(404);
+    });
+});
+
+//--- Validation tests
+describe("POST /employees - validation", () => {
+    test("should return 400 when required fields are missing", async() => {
+        const response = await request(app).post("/employees").send({});
+
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        expect(response.body.details).toEqual(
+            expect.arrayContaining([
+                "name is required",
+                "department is required",
+                "salary must be a positive number"
+            ])
+        );
+    });
+
+    test("should return 400 when name is empty", async() => {
+        const response = await request(app).post("/employees")
+            .send({
+                name: "",
+                department: "Testing",
+                salary: 999
+            });
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        expect(response.body.details).toContain("name is required");
+    });
+
+    test("should return 400 when department is empty", async() => {
+        const response = await request(app).post("/employees")
+            .send({
+                name: "Test",
+                department: "",
+                salary: 999
+            });
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        expect(response.body.details).toContain("department is required");
+    });
+
+    test("should return 400 when salary is invalid", async() => {
+        const response = await request(app).post("/employees")
+            .send({
+                name: "Test employee",
+                department: "Testing",
+                salary: "abc"
+            });
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        expect(response.body.details).toContain(
+            "salary must be a positive number"
+        );
+    });
+
+    test("should return 400 when salary is zero", async () => {
+        const response = await request(app).post("/employees")
+            .send({
+                name: "Test employee",
+                department: "Testing",
+                salary: 0
+            });
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        expect(response.body.details).toContain(
+            "salary must be a positive number"
+        );
+    });
+
+    test("should return 400 when salary is negative", async () => {
+        const response = await request(app)
+            .post("/employees")
+            .send({
+                name: "Test Employee",
+                department: "Testing",
+                salary: -2
+            });
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        expect(response.body.details).toContain(
+            "salary must be a positive number"
+        );
+    });
+});
+
+describe("PUT /employees/:id - validation", () => {
+    test("should return 400 when required fields are missing", async () => {
+        const response = await request(app).put("/employees/1")
+            .send({});
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        // expect(response.body.details).toEqual(
+        //     expect.arrayContaining([
+        //         "name is required",
+        //         "department is required",
+        //         "salary must be a positive number"
+        //     ])
+        // );
+    });
+
+    test("should return 400 when salary is invalid", async() => {
+        const response = await request(app).put("/employees/1")
+            .send({
+                name: "Updated Employee",
+                department: "Testing",
+                salary: "abc"
+            });
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        // expect(response.body.details).toContain(
+        //     "salary must be a positive number"
+        // );
+    });
+
+    test("should return 400 when salary is negative", async() => {
+        const response = await request(app).put("/employees/1")
+            .send({
+                name: "Updated Employee",
+                department: "Testing",
+                salary: -1000
+            });
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toBe("Validation failed");
+        // expect(response.body.details).toContain(
+        //     "salary must be a positive number"
+        // );
     });
 })

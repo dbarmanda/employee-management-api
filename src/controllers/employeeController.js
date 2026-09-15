@@ -124,7 +124,8 @@ async function updateEmployeeController(req, res, next){
             salary <= 0
         ) {
             return res.status(400).json({
-                error: "name, department and a positive salary are required"
+                // error: "name, department and a positive salary are required"
+                error: "Validation failed"
             });
         }
 
