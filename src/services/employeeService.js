@@ -1,3 +1,4 @@
+const AppError = require("../errors/AppError");
 const pool = require("../db/db");
 const {
     getCacheVersion,
@@ -148,6 +149,10 @@ async function getEmployeeById(id){
         "SELECT * FROM employees WHERE id = $1",
         [id]
     );
+
+    if(result.rows.length === 0)
+        throw new AppError("Employee not found", 404);
+
     return result.rows[0];
 }
 
@@ -164,6 +169,9 @@ async function updateEmployee(id, name, department, salary) {
 
     if(result.rows[0]){ await invalidateEmployeeCache(); }
 
+    if(result.rows.length === 0)
+        throw new AppError("Employee not found", 404);
+
     return result.rows[0];
 }
 
@@ -177,6 +185,9 @@ async function deleteEmployee(id) {
 
     if(result.rows[0]){ await invalidateEmployeeCache(); }
 
+    if(result.rows.length === 0)
+        throw new AppError("Employee not found", 404);
+
     return result.rows[0];
 }
 
@@ -187,3 +198,4 @@ module.exports = {
     updateEmployee,
     deleteEmployee
 };
+

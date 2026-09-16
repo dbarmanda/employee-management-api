@@ -245,4 +245,32 @@ describe("PUT /employees/:id - validation", () => {
         //     "salary must be a positive number"
         // );
     });
-})
+});
+
+describe("Request IDs", () => {
+    test("should generate a request ID when one is not provided", async() => {
+        const response = await request(app).get("/");
+        expect(response.statusCode).toBe(200);
+        expect(response.headers["x-request-id"]).toBeDefined();
+        expect(response.headers["x-request-id"]).not.toBe("");
+    });
+
+    test("should preserve an existing request ID", async() => {
+        const response = await request(app).get("/")
+            .set("X-Request-ID", "test-request-123");
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers["x-request-id"])
+            .toBe("test-request-123");
+    });
+});
+
+describe("Centralized error handling", () => {
+    test("should return 404 with request ID for missing employee", async () => {
+        const response = await request(app).get("/employees/9999");
+        expect(response.statusCode).toBe(404);
+        expect(response.body.error).toBe("Employee not found");
+        expect(response.body.requestId).toBeDefined();
+    });
+});
+

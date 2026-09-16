@@ -29,6 +29,7 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+      - "9229:9229"
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -51,3 +52,4 @@ services:
 
 volumes:
   postgres_data:
+

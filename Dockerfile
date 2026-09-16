@@ -4,4 +4,6 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 EXPOSE 3000
-CMD ["npm", "start"]
+# CMD ["npm", "start"]
+CMD ["node", "--inspect=0.0.0.0:9229", "server.js"]
+

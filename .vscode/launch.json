@@ -7,11 +7,20 @@
 
         {
             "type": "node",
-            "request": "launch",
-            "name": "Debug Employee API",
-            "program": "${workspaceFolder}/server.js",
-            "console": "integratedTerminal",
-            "restart": false
+            "request": "attach",
+            "name": "Attach to Docker Node",
+            "address": "localhost",
+            "port": "9229",
+            // "program": "${workspaceFolder}/server.js",
+            // "console": "integratedTerminal",,
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/app",
+            "restart": true,
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+
         }
     ]
 }
+
