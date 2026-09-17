@@ -274,3 +274,34 @@ describe("Centralized error handling", () => {
     });
 });
 
+
+describe("Redis caching", () => {
+    test("should return employees successfully", async() =>{
+        const response = await request(app)
+            .get("/employees")
+            .query({
+                page: 1,
+                limit: 5
+            });
+        expect(response.status).toBe(200);
+        expect(response.body.data).toBeInstanceOf(Array);
+        expect(response.body.pagination.page).toBe(1);
+        expect(response.body.pagination.limit).toBe(5);
+    });
+
+    test("should return the same cached response for repeated requests", async() => {
+        const firstResponse = await request(app).get("/employees")
+            .query({
+                page: 1,
+                limit: 5
+            });
+        const secondResponse = await request(app).get("/employees")
+            .query({
+                page: 1,
+                limit: 5
+            });
+        expect(secondResponse.statusCode).toBe(200);
+        expect(secondResponse.body).toEqual(firstResponse.body);
+    });
+});
+

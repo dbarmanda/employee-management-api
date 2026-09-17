@@ -1,37 +1,58 @@
 const { redisClient } = require("./redis");
 
-const CACHE_TTL = 60;
+const CACHE_TTL = Number(process.env.REDIS_CACHE_TTL) || 60;
 const CACHE_VERSION_KEY = "employees:cache:version";
 
 async function getCacheVersion(){
-    let version = await redisClient.get(CACHE_VERSION_KEY);
-    if(!version){
-        version = "1";
-        await redisClient.set(CACHE_VERSION_KEY, version);
+    try {
+        let version = await redisClient.get(CACHE_VERSION_KEY);
+        if(!version){
+            version = "1";
+            await redisClient.set(CACHE_VERSION_KEY, version);
+        }
+        return version;
+    } catch (error) {
+        console.log("Redis getCacheVersioin error:", error);
+        return "no-cache";
     }
-    return version;
 }
 
 async function invalidateEmployeeCache(){
-    await redisClient.incr(CACHE_VERSION_KEY);
-    console.log("Employee cache invalidated");
+    try {
+        await redisClient.incr(CACHE_VERSION_KEY);
+        console.log("Employee cache invalidated");
+    } catch (error) {
+        console.error("Redis cache invalidation error:", error);
+    }
 }
 
 async function getCachedEmployee(key){
-    const cacheData = await redisClient.get(key);
-    if(!cacheData){
+    try {
+        const cacheData = await redisClient.get(key);
+        if(!cacheData){
+            return null;
+        }
+        return JSON.parse(cacheData);
+    } catch (error) {
+        console.error("Redis cache read error:", error);
         return null;
     }
-    return JSON.parse(cacheData);
 }
 
 async function cacheEmployees(key, employees){
-    await redisClient.set(
-        key,
-        JSON.stringify(employees),{
-            EX: CACHE_TTL
-        }
-    );
+    try {
+        await redisClient.set(
+            key,
+            JSON.stringify(employees),{
+                EX: CACHE_TTL
+            }
+        );
+        console.log(
+            `Employees cached: ${key} (TTL: ${CACHE_TTL}s)`
+        );
+    } catch (error) {
+        console.error("Redis cache write error:", error);
+    }
 }
 
 module.exports = {

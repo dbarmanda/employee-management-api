@@ -36,12 +36,12 @@ async function getEmployees(options){
     const cacheKey = [
         "employees",
         `v${version}`,
-        department || "",
-        search || "",
-        page,
-        limit,
-        sortBy || "id",
-        order || "asc"
+        `department=${encodeURIComponent(department || "")}`,
+        `search=${encodeURIComponent(search || "")}`,
+        `page=${page}`,
+        `limit=${limit}`,
+        `sortBy=${sortBy || "id"}`,
+        `order=${order || "asc"}`
     ].join(":");
 
     const cachedEmployees = await getCachedEmployee(cacheKey);
