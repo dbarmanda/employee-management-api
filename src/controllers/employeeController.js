@@ -93,7 +93,7 @@ async function getEmployeeByIdController(req, res, next){
             });
         }
 
-        res.status(200).json(employee);
+        return res.status(200).json(employee);
     } catch (error) {
         next(error);
     }

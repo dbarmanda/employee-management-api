@@ -1,8 +1,44 @@
 const request = require("supertest");
 const app = require("../src/app");
 const pool = require("../src/db/db");
-const expectCookies = require("supertest/lib/cookies");
 
+const {
+    testUser,
+    testAdmin,
+    setupTestAuth,
+    cleanupTestAuth
+} = require("./helpers/testAuth");
+
+const bcrypt = require("bcryptjs");
+
+let auth;
+
+beforeAll(async () => {
+    auth = await setupTestAuth();
+});
+afterAll(async() => {
+    await cleanupTestAuth();
+});
+
+async function createTestUser(testEmail, testPassword){
+    const passwordHash = await bcrypt.hash(
+            testPassword,
+            12
+        );
+        await pool.query(`
+            INSERT INTO users (email, password_hash, role)
+            VALUES ($1, $2, 'user')
+            ON CONFLICT (email)
+            DO UPDATE SET
+                password_hash = EXCLUDED.password_hash,
+                role='user'
+            `,
+        [testEmail, passwordHash]);
+}
+
+async function deleteTestUser(testEmail){
+    await pool.query("DELETE FROM users WHERE email = $1", [testEmail]);
+}
 //--- Request tests
 describe("GET /", () => {
     test("should return API message", async() => {
@@ -15,8 +51,13 @@ describe("GET /", () => {
 });
 
 describe("GET /employees", () => {
+
     test("should return employees with pagination", async() => {
-        const response = await request(app).get("/employees");
+        const response = await request(app).get("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.userToken}`
+            );
         //expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
         expect(response.body).toHaveProperty("pagination");
@@ -36,6 +77,10 @@ describe("POST /employees", () => {
     test("should create a new employee", async() => {
         const response = await request(app)
             .post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Test Employee",
                 department: "Testing",
@@ -55,7 +100,11 @@ describe("POST /employees", () => {
 describe("GET /employees/:id", () => {
     test("should return an employee by id", async() => {
         const response = await request(app)
-            .get("/employees/1");
+            .get("/employees/1")
+            .set(
+                "Authorization",
+                `Bearer ${auth.userToken}`
+            );
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("id", 1);
@@ -65,7 +114,11 @@ describe("GET /employees/:id", () => {
     });
 
     test("should return 404 when employee does not exist", async() => {
-        const response = await request(app).get("/employees/99999");
+        const response = await request(app).get("/employees/99999")
+            .set(
+                "Authorization",
+                `Bearer ${auth.userToken}`
+            );
         expect(response.statusCode).toBe(404);
     });
 });
@@ -75,6 +128,10 @@ describe("PUT /employees/:id", () => {
         //Create test employee
         const createResponse = await request(app)
             .post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "PUT Test Employee",
                 department: "Testing",
@@ -87,6 +144,10 @@ describe("PUT /employees/:id", () => {
         //Update test employee
         const updateResponse = await request(app)
             .put(`/employees/${employeeId}`)
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Updated Employee",
                 department: "Engineering",
@@ -109,6 +170,10 @@ describe("PUT /employees/:id", () => {
 
         const response = await request(app)
             .put("/employees/999999999")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Does Not Exist",
                 department: "Testing",
@@ -122,7 +187,11 @@ describe("PUT /employees/:id", () => {
 //--- Validation tests
 describe("POST /employees - validation", () => {
     test("should return 400 when required fields are missing", async() => {
-        const response = await request(app).post("/employees").send({});
+        const response = await request(app).post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            ).send({});
 
         expect(response.statusCode).toBe(400);
         expect(response.body.error).toBe("Validation failed");
@@ -137,6 +206,10 @@ describe("POST /employees - validation", () => {
 
     test("should return 400 when name is empty", async() => {
         const response = await request(app).post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "",
                 department: "Testing",
@@ -149,6 +222,10 @@ describe("POST /employees - validation", () => {
 
     test("should return 400 when department is empty", async() => {
         const response = await request(app).post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Test",
                 department: "",
@@ -161,6 +238,10 @@ describe("POST /employees - validation", () => {
 
     test("should return 400 when salary is invalid", async() => {
         const response = await request(app).post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Test employee",
                 department: "Testing",
@@ -175,6 +256,10 @@ describe("POST /employees - validation", () => {
 
     test("should return 400 when salary is zero", async () => {
         const response = await request(app).post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Test employee",
                 department: "Testing",
@@ -190,6 +275,10 @@ describe("POST /employees - validation", () => {
     test("should return 400 when salary is negative", async () => {
         const response = await request(app)
             .post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Test Employee",
                 department: "Testing",
@@ -206,6 +295,10 @@ describe("POST /employees - validation", () => {
 describe("PUT /employees/:id - validation", () => {
     test("should return 400 when required fields are missing", async () => {
         const response = await request(app).put("/employees/1")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({});
         expect(response.statusCode).toBe(400);
         expect(response.body.error).toBe("Validation failed");
@@ -220,6 +313,10 @@ describe("PUT /employees/:id - validation", () => {
 
     test("should return 400 when salary is invalid", async() => {
         const response = await request(app).put("/employees/1")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Updated Employee",
                 department: "Testing",
@@ -234,6 +331,10 @@ describe("PUT /employees/:id - validation", () => {
 
     test("should return 400 when salary is negative", async() => {
         const response = await request(app).put("/employees/1")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .send({
                 name: "Updated Employee",
                 department: "Testing",
@@ -267,7 +368,11 @@ describe("Request IDs", () => {
 
 describe("Centralized error handling", () => {
     test("should return 404 with request ID for missing employee", async () => {
-        const response = await request(app).get("/employees/9999");
+        const response = await request(app).get("/employees/9999")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            );
         expect(response.statusCode).toBe(404);
         expect(response.body.error).toBe("Employee not found");
         expect(response.body.requestId).toBeDefined();
@@ -279,11 +384,15 @@ describe("Redis caching", () => {
     test("should return employees successfully", async() =>{
         const response = await request(app)
             .get("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .query({
                 page: 1,
                 limit: 5
             });
-        expect(response.status).toBe(200);
+        expect(response.statusCode).toBe(200);
         expect(response.body.data).toBeInstanceOf(Array);
         expect(response.body.pagination.page).toBe(1);
         expect(response.body.pagination.limit).toBe(5);
@@ -291,11 +400,19 @@ describe("Redis caching", () => {
 
     test("should return the same cached response for repeated requests", async() => {
         const firstResponse = await request(app).get("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .query({
                 page: 1,
                 limit: 5
             });
         const secondResponse = await request(app).get("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.adminToken}`
+            )
             .query({
                 page: 1,
                 limit: 5
@@ -305,3 +422,83 @@ describe("Redis caching", () => {
     });
 });
 
+//Authentication Test
+describe("Authentication", () => {
+    
+
+    test("should reject request without authentication", async() => {
+        const response = await request(app)
+            .get("/employees");
+        expect(response.statusCode).toBe(401);
+        expect(response.body.error).toBe(
+            "Authentication required"
+        );
+        expect(response.body.requestId).toBeDefined();
+    });
+    test("should reject invalid credentials", async() => {
+        const response = await request(app)
+            .post("/auth/login")
+            .send({
+                email: testAdmin.email,
+                password: "WrongPassword"
+            });
+        expect(response.statusCode).toBe(401);
+        expect(response.body.error).toBe("Invalid email or password");
+    });
+
+    test("should login successfully", async() => {
+        const response = await request(app)
+            .post("/auth/login")
+            .send({
+                email: testUser.email,
+                password: testUser.password
+            });
+        expect(response.statusCode).toBe(200);
+        expect(response.body.token).toBeDefined();
+        expect(response.body.user.email).toBe(testUser.email);
+        expect(response.body.user.role).toBe("user");
+    });
+
+    test("should reject malformed token", async()=>{
+        const response = await request(app)
+            .get("/employees")
+            .set(
+                "Authorization",
+                "Bearer invalid-token"
+            );
+        expect(response.statusCode).toBe(401);
+        expect(response.body.error).toBe(
+            "Invalid Token"
+        );
+    });
+
+    
+});
+
+//Authorization Test
+describe("Authorization", () => {
+
+    test("should allow authenticated user to read employees", async()=>{
+        const response = await request(app).get("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.userToken}`
+            );
+        expect(response.statusCode).toBe(200);
+    });
+    test("should reject regular user from creating employee", async() => {
+        const response = await request(app).post("/employees")
+            .set(
+                "Authorization",
+                `Bearer ${auth.userToken}`
+            )
+            .send({
+                name: "Unauthorized employee",
+                department: "IT",
+                salary: 51000
+            });
+        expect(response.statusCode).toBe(403);
+        expect(response.body.error).toBe("Forbidden");
+    });
+    
+});

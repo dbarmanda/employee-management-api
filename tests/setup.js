@@ -13,6 +13,9 @@ beforeAll(async() => {
 });
 
 afterAll(async() => {
-    await redisClient.quit();
-    pool.end();
+    // await redisClient.quit();
+    // pool.end();
+    if(redisClient.isOpen){
+        await redisClient.quit();
+    }
 })

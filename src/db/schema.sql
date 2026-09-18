@@ -14,3 +14,17 @@ CREATE INDEX idx_employee_name_trgm
 ON employees
 USING GIN (name gin_trgm_ops);
 
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT users_role_check
+        CHECK (role IN ('user', 'admin'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email
+ON users(email);
+
