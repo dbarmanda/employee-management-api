@@ -7,12 +7,14 @@ const errorHandler = require("./middleware/errorHandler");
 const employeeRoutes = require("./routes/employeeRoutes");
 const authRoutes = require("./routes/authRoutes");
 
+const { generalLimiter } = require("./middleware/rateLimiter");
+
 const app = express();
 app.use(express.json());
 
 app.use(requestId);
 app.use(logger);
-
+app.use(generalLimiter);
 app.get("/", (req, res) => {
     res.json({
         message: "Employee Management API"

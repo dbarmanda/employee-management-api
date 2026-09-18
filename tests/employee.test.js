@@ -502,3 +502,18 @@ describe("Authorization", () => {
     });
     
 });
+
+describe("API rate limiting", () => {
+
+    test("should expose rate limit headers", async () => {
+        const response = await request(app)
+            .get("/");
+
+        expect(response.statusCode).toBe(200);
+
+        expect(
+            response.headers["ratelimit"]
+        ).toBeDefined();
+    });
+
+});
