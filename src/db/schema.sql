@@ -1,3 +1,14 @@
+CREATE TABLE IF NOT EXISTS employee_audit_logs (
+    id BIGSERIAL PRIMARY KEY,
+    employee_id INTEGER,
+    action VARCHAR(50) NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_employee_audit_logs_employee_id
+ON employee_audit_logs(employee_id);
+
 CREATE TABLE employees(
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,

@@ -6,6 +6,7 @@ const {
     getCachedEmployee,
     cacheEmployees
 } = require("../cache/emloyeeCache");
+const { queueEmployeeEvent } = require("../queue/employeeJobs");
 
 
 async function createEmployee(name, department, salary){
@@ -15,8 +16,18 @@ async function createEmployee(name, department, salary){
         RETURNING *`,
         [name, department, salary]
     );
-
+    const employee = result.rows[0];
     await invalidateEmployeeCache();
+
+    await queueEmployeeEvent(
+        "created",
+        employee.id,
+        {
+            name: employee.name,
+            department: employee.department,
+            salary: employee.salary
+        }
+    );
 
     return result.rows[0];
 }
@@ -167,7 +178,19 @@ async function updateEmployee(id, name, department, salary) {
         [name, department, salary, id]
     );
 
-    if(result.rows[0]){ await invalidateEmployeeCache(); }
+    if(result.rows[0]){ 
+        await invalidateEmployeeCache(); 
+        const employee = result.rows[0];
+        await queueEmployeeEvent(
+            "updated",
+            employee.id,
+            {
+                name: employee.name,
+                department: employee.department,
+                salary: employee.salary
+            }
+        );
+    }
 
     if(result.rows.length === 0)
         throw new AppError("Employee not found", 404);
@@ -183,7 +206,19 @@ async function deleteEmployee(id) {
         [id]
     );
 
-    if(result.rows[0]){ await invalidateEmployeeCache(); }
+    if(result.rows[0]){ 
+        await invalidateEmployeeCache();
+        const employee = result.rows[0];
+        await queueEmployeeEvent(
+            "deleted",
+            employee.id,
+            {
+                name: employee.name,
+                department: employee.department,
+                salary: employee.salary
+            }
+        ); 
+    }
 
     if(result.rows.length === 0)
         throw new AppError("Employee not found", 404);

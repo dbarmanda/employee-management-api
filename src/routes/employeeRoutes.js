@@ -22,6 +22,6 @@ router.post("/", authenticate, authorize("admin"), validateEmployee, createEmplo
 
 router.put("/:id", authenticate, authorize("admin"), updateEmployeeController);
 
-router.delete("/:id", authorize("admin"), deleteEmployeeController);
+router.delete("/:id", authenticate, authorize("admin"), deleteEmployeeController);
 
 module.exports = router;
