@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "worker": "node worker.js",
+    "outbox-worker": "node outboxWorker.js",
     "test": "node --env-file=.env.test ./node_modules/jest/bin/jest.js --runInBand"
   },
   "jest": {

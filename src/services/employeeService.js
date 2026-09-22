@@ -6,30 +6,59 @@ const {
     getCachedEmployee,
     cacheEmployees
 } = require("../cache/emloyeeCache");
-const { queueEmployeeEvent } = require("../queue/employeeJobs");
+
+//X   API --> Redis
+//Ok  API --> PostreSQL transaction --> outbox
+//--> So, the outbox worker will eventually talk to Redis.
+// const { queueEmployeeEvent } = require("../queue/employeeJobs");
+
+const { createOutboxMessage } = require("./outboxService");
 
 
 async function createEmployee(name, department, salary){
-    const result = await pool.query(
-        `INSERT INTO employees (name, department, salary)
-        VALUES ($1, $2, $3)
-        RETURNING *`,
-        [name, department, salary]
-    );
-    const employee = result.rows[0];
-    await invalidateEmployeeCache();
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        const result = await client.query(
+            `INSERT INTO employees (name, department, salary)
+            VALUES ($1, $2, $3)
+            RETURNING *`,
+            [name, department, salary]
+        );
+        const employee = result.rows[0];
+        
+        //await invalidateEmployeeCache();
+        // await queueEmployeeEvent(
+        //     "created",
+        //     employee.id,
+        //     {
+        //         name: employee.name,
+        //         department: employee.department,
+        //         salary: employee.salary
+        //     }
+        // );
 
-    await queueEmployeeEvent(
-        "created",
-        employee.id,
-        {
-            name: employee.name,
-            department: employee.department,
-            salary: employee.salary
-        }
-    );
+         await createOutboxMessage(client, {
+            eventType: "employee.created",
+            aggregateType: "employee",
+            aggregateId: employee.id,
+            payload: {
+                id: employee.id,
+                name: employee.name,
+                department: employee.department,
+                salary: employee.salary
+            }
+        });
 
-    return result.rows[0];
+        await client.query("COMMIT");
+        await invalidateEmployeeCache();
+        return employee;
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally{
+        client.release();
+    }
 }
 
 async function getEmployees(options){
@@ -168,7 +197,10 @@ async function getEmployeeById(id){
 }
 
 async function updateEmployee(id, name, department, salary) {
-    const result = await pool.query(
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        const result = await client.query(
         `UPDATE employees
          SET name = $1,
              department = $2,
@@ -178,52 +210,83 @@ async function updateEmployee(id, name, department, salary) {
         [name, department, salary, id]
     );
 
-    if(result.rows[0]){ 
-        await invalidateEmployeeCache(); 
-        const employee = result.rows[0];
-        await queueEmployeeEvent(
-            "updated",
-            employee.id,
-            {
-                name: employee.name,
-                department: employee.department,
-                salary: employee.salary
-            }
-        );
-    }
-
     if(result.rows.length === 0)
         throw new AppError("Employee not found", 404);
 
-    return result.rows[0];
+    const employee = result.rows[0];
+    await createOutboxMessage(client, {
+        eventType: "employee.updated",
+        aggregateType: "employee",
+        aggregateId: employee.id,
+        payload: {
+            id: employee.id,
+            name: employee.name,
+            department: employee.department,
+            salary: employee.salary
+        }
+    });
+    await client.query("COMMIT");
+    await invalidateEmployeeCache();
+    return employee;
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally{
+        client.release();
+    }
 }
 
 async function deleteEmployee(id) {
-    const result = await pool.query(
-        `DELETE FROM employees
-         WHERE id = $1
-         RETURNING *`,
-        [id]
-    );
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+         const result = await client.query(
+            `DELETE FROM employees
+            WHERE id = $1
+            RETURNING *`,
+            [id]
+        );
 
-    if(result.rows[0]){ 
-        await invalidateEmployeeCache();
+        // if(result.rows[0]){ 
+        //     await invalidateEmployeeCache();
+        //     const employee = result.rows[0];
+        //     await queueEmployeeEvent(
+        //         "deleted",
+        //         employee.id,
+        //         {
+        //             name: employee.name,
+        //             department: employee.department,
+        //             salary: employee.salary
+        //         }
+        //     ); 
+        // }
+
+        if(result.rows.length === 0)
+            throw new AppError("Employee not found", 404);
+
         const employee = result.rows[0];
-        await queueEmployeeEvent(
-            "deleted",
-            employee.id,
-            {
+        await createOutboxMessage(client, {
+            eventType: "employee.deleted",
+            aggregateType: "employee",
+            aggregateId: employee.id,
+            payload: {
+                id: employee.id,
                 name: employee.name,
                 department: employee.department,
                 salary: employee.salary
             }
-        ); 
+        });
+        await client.query("COMMIT");
+
+        await invalidateEmployeeCache();
+
+        return employee;
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
     }
-
-    if(result.rows.length === 0)
-        throw new AppError("Employee not found", 404);
-
-    return result.rows[0];
 }
 
 module.exports = {
