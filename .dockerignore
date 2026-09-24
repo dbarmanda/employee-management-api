@@ -8,8 +8,8 @@ npm-debug.log*
 .git
 .gitignore
 
-tests
 coverage
 
 Dockerfile
 docker-compose.yml
+compose.test.yml

@@ -99,15 +99,29 @@ describe("POST /employees", () => {
 
 describe("GET /employees/:id", () => {
     test("should return an employee by id", async() => {
+
+        const createResponse = await request(app)
+            .post("/employees")
+            .set("Authorization", `Bearer ${auth.adminToken}`)
+            .send({
+                name: "Get By Id Employee",
+                department: "IT",
+                salary: 50000
+            });
+
+        expect(createResponse.statusCode).toBe(201);
+
+        const employeeId = createResponse.body.id;
+
         const response = await request(app)
-            .get("/employees/1")
+            .get(`/employees/${employeeId}`)
             .set(
                 "Authorization",
                 `Bearer ${auth.userToken}`
             );
 
         expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty("id", 1);
+        expect(response.body).toHaveProperty("id", employeeId);
         expect(response.body).toHaveProperty("name");
         expect(response.body).toHaveProperty("department");
         expect(response.body).toHaveProperty("salary");

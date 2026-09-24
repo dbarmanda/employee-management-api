@@ -1,6 +1,9 @@
 const { employeeQueue } = require("../src/queue/employeeQueue");
 
 describe("Employee queue", () => {
+    afterAll(async () => {
+        await employeeQueue.close();
+    });
     test("can enqueue an employee event", async () => {
         const job = await employeeQueue.add(
             "employee-created",

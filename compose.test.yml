@@ -1,0 +1,59 @@
+name: employee-management-api-test
+
+services:
+  test-postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: employee_test_db
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U test_user -d employee_test_db"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+  test-redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  test:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: test
+
+    environment:
+      NODE_ENV: test
+
+      DB_HOST: test-postgres
+      DB_PORT: 5432
+      DB_USER: test_user
+      DB_PASSWORD: test_password
+      DB_NAME: employee_test_db
+
+      REDIS_HOST: test-redis
+      REDIS_PORT: 6379
+      REDIS_CACHE_TTL: 60
+
+      JWT_SECRET: integration_test_secret
+      JWT_EXPIRES_IN: 1h
+
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+
+      test-redis:
+        condition: service_healthy
+        
