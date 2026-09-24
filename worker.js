@@ -1,6 +1,8 @@
 const { Worker } = require("bullmq");
 const pool = require("./src/db/db");
 
+const SHUTDOWN_TIMEOUT_MS = 8000;
+
 // const connection = {
 //     host: process.env.REDIS_HOST,
 //     port: Number(process.env.REDIS_PORT)
@@ -82,13 +84,37 @@ worker.on("error", (error) => {
     console.error(`Worker error:`, error);
 });
 
-async function shutdown(signal){
-    console.log(`${signal} received. Shutting down audit worker...`);
-    await worker.close();
-    await pool.end();
 
-    console.log("Audit worker shut down gracefully.");
-    process.exit(0);
+let isShuttingDown = false;
+async function shutdown(signal){
+    if(isShuttingDown){
+        return;
+    }
+    isShuttingDown = true;
+    console.log(`${signal} received. Shutting down audit worker...`);
+
+    const forceShutdownTimer = setTimeout(() => {
+       console.error("Graceful shudown timed out. Forcing exit.");
+       process.exit(1); 
+    }, SHUTDOWN_TIMEOUT_MS);
+    forceShutdownTimer.unref();
+
+    try {
+        await worker.close();
+        console.log("BullMQ worker closed.");
+        await pool.end();
+        console.log("PostgreSQL pool closed.");
+
+        console.log("Audit worker shut down gracefully.");
+        process.exit(0);
+    } catch (error) {
+        console.error(
+            "Error shutting down audit worker:",
+            error
+        );
+
+        process.exit(1);
+    }
 }
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));

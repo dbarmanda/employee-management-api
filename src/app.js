@@ -12,6 +12,7 @@ const employeeRoutes = require("./routes/employeeRoutes");
 const authRoutes = require("./routes/authRoutes");
 
 const { generalLimiter } = require("./middleware/rateLimiter");
+const { checkReadiness } = require("./health/health");
 
 const app = express();
 app.use(express.json());
@@ -25,6 +26,26 @@ app.use(
     swaggerUi.serve,
     swaggerUi.setup(swaggerSpec)
 );
+
+app.get("/health/live", (req, res) => {
+    res.status(200).json({
+        status: "ok"
+    });
+});
+
+app.get("/health/ready", async (req, res) => {
+    const readiness = await checkReadiness();
+    if(!readiness.ready){
+        return res.status(503).json({
+            status: "not_ready",
+            checks: readiness.checks
+        });
+    }
+    return res.status(200).json({
+        status: "ready",
+        checks: readiness.checks
+    });
+})
 
 app.get("/", (req, res) => {
     res.json({

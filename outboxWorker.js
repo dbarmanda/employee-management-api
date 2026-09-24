@@ -3,8 +3,11 @@ const pool = require("./src/db/db");
 
 const POLL_INTERVAL = 2000;
 const BATCH_SIZE = 20;
+const SHUTDOWN_TIMEOUT_MS = 8000;
 
+let processingPromise;
 let running = true;
+let isShuttingDown = false;
 
 async function processOutbox(){
     while(running){
@@ -68,7 +71,7 @@ async function processOutbox(){
             console.error("Outbox worker error:", error.message);
             await sleep(POLL_INTERVAL);
         }
-    }//while loop
+    }
 }
 
 function sleep(ms) {
@@ -76,13 +79,47 @@ function sleep(ms) {
 }
 
 async function shutdown(signal) {
+
+    if(isShuttingDown){
+        true;
+    }
+    isShuttingDown = true;
+
     console.log(
         `${signal} received. Shutting down outbox worker...`
     );
-    running = false;
-    await pool.end();
-    console.log("Outbox worker shut down.");
-    process.exit(0);
+    
+    const forceShutdownTimer = setTimeout(() => {
+       console.error("Graceful shudown timed out. Forcing exit.");
+       process.exit(1); 
+    }, SHUTDOWN_TIMEOUT_MS);
+    forceShutdownTimer.unref();
+
+    try {
+        running = false;    //Tell pooling loop not to start another iteration
+
+        //Wait for the current iteration to finish.
+        if(processingPromise){
+            await processingPromise;
+        }
+        console.log("Outbox polling stopped.");
+
+        await employeeQueue.close();
+        console.log("Employee queue closed.");
+
+        await pool.end();
+        console.log("PostgreSQL pool closed.");
+
+        console.log("Outbox worker shut down gracefully.");
+        process.exit(0);
+    } catch (error) {
+        console.error(
+            "Error shutting down outbox worker:",
+            error
+        );
+
+        process.exit(1);
+    }
 }
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));
@@ -90,4 +127,5 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 
 console.log("Outbox worker started.");
 
-processOutbox();
+// processOutbox();
+processingPromise = processOutbox();
